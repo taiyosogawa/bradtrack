@@ -27,13 +27,16 @@ class LKTracker(object):
 
 		# search for good points
 		features = cv2.goodFeaturesToTrack(self.gray, **feature_params)
+		
+		if features != None:
+			# refine the corner locations
+			cv2.cornerSubPix(self.gray, features, **subpix_params)
 
-		# refine the corner locations
-		cv2.cornerSubPix(self.gray, features, **subpix_params)
+			self.features = features
+			self.tracks = [[p] for p in features.reshape((-1, 2))]
+			self.prev_gray = self.gray
 
-		self.features = features
-		self.tracks = [[p] for p in features.reshape((-1, 2))]
-		self.prev_gray = self.gray
+
 
 	def track_points(self):
 		""" Track the detected features. """
