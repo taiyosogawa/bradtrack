@@ -1,8 +1,9 @@
 from numpy import *
 import cv2
+import win32api, win32con, math
 
-MIN_POINTS = 2
-MAX_POINTS = 2
+MIN_POINTS = 1
+MAX_POINTS = 1
 lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, .03))
 subpix_params = dict(zeroZone=(-1, -1), winSize=(10, 10), criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 20, .03))
 feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
@@ -12,16 +13,18 @@ class LKTracker(object):
 		pyramidal optical flow."""
 
 	def __init__(self):
-		if MAX_POINTS > MIN_POINTS:
+		if MAX_POINTS < MIN_POINTS:
 			print "The maximum number of points is less than the minimum number of points specified"
 		self.features = []
 		self.tracks = []
 		self.current_frame = 0
 
-	def update(self, img):
+	def update(self, img, mouse=False):
 		self.img = img
 		if len(self.features) < MIN_POINTS:
 			self.detect_points()
+		self.track_points(mouse)
+		self.draw()
 
 	def detect_points(self):
 		""" Detect 'good features to track' (corners)
@@ -40,10 +43,25 @@ class LKTracker(object):
 			self.tracks = [[p] for p in features.reshape((-1, 2))]
 			self.prev_gray = self.gray
 
+	def get_points(self):
+		return self.features[0][0]
 
-	def track_points(self):
+	def set_mapping(self, mX=0, mY=0, sX=1, sY=1):
+		self.minX = mX
+		self.minY = mY
+		self.scaleX = sX
+		self.scaleY = sY
+
+	def track_points(self, mouse=False):
 		""" Track the detected features. """
 		if self.features != []:
+
+			if mouse:
+				x = int(win32api.GetSystemMetrics (0) - (self.features[0][0][0] - self.minX) * self.scaleX)
+				y = int((self.features[0][0][1] - self.minY) * self.scaleY)
+
+				win32api.SetCursorPos((x, y))
+
 			#load the image and create grayscale
 			self.filter()
 			
@@ -51,6 +69,7 @@ class LKTracker(object):
 			tmp = float32(self.features).reshape(-1, 1, 2)
 
 			# calculate optical flow
+			self.prev_features = self.features
 			features, status, track_error = cv2.calcOpticalFlowPyrLK(self.prev_gray, self.gray, tmp, None, **lk_params)
 
 			# remove points lost
@@ -79,9 +98,11 @@ class LKTracker(object):
 			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 3, (0, 255, 0), -1)
 
 		cv2.imshow('LKtrack', self.img)
+		
 
 	def filter(self):
-		gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-		self.gray = cv2.threshold(gray, 70, 255, cv2.THRESH_BINARY_INV)[1]
+		(gray, cg, cr) = cv2.split(self.img)
+		#gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+		self.gray = cv2.threshold(gray, 200, 255, cv2.THRESH_TOZERO)[1]
 
 					
