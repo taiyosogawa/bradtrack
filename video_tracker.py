@@ -8,7 +8,7 @@ cap = cv2.VideoCapture(0)
 
 
 ret, im = cap.read()
-lkt = lktrack.LKTracker()
+lkt = lktrack.LKTracker(im)
 lkt.update(im)
 
 bigX = GetSystemMetrics (0)

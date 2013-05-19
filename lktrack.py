@@ -1,6 +1,6 @@
 from numpy import *
 import cv2
-import win32api, win32con, math
+import win32api, win32con, math, time
 
 MIN_POINTS = 1
 MAX_POINTS = 1
@@ -12,16 +12,18 @@ class LKTracker(object):
 	""" Class for Lucas-Kanade tracking with 
 		pyramidal optical flow."""
 
-	def __init__(self):
+	def __init__(self, img):
 		if MAX_POINTS < MIN_POINTS:
 			print "The maximum number of points is less than the minimum number of points specified"
 		self.features = []
 		self.tracks = []
 		self.current_frame = 0
+		self.avg = float32(img)
 
 	def update(self, img, mouse=False):
 		self.img = img
-		if len(self.features) < MIN_POINTS:
+		if len(self.features) < MIN_POINTS or floor(time.time())%10000 == 0:
+			print "tracking"
 			self.detect_points()
 		self.track_points(mouse)
 		self.draw()
@@ -38,7 +40,6 @@ class LKTracker(object):
 		
 		if features != None:
 			# refine the corner locations
-			#cv2.cornerSubPix(self.gray, features, **subpix_params)
 			self.features = features
 			self.tracks = [[p] for p in features.reshape((-1, 2))]
 			self.prev_gray = self.gray
@@ -91,18 +92,20 @@ class LKTracker(object):
 		""" Draw the current image with points using
 			OpenCV's own drawing functions. """
 
-		self.img = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
-
 		# draw points as green circles for point in self.features:
 		for point in self.features:
 			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 3, (0, 255, 0), -1)
+			cv2.circle(self.gray, (int(point[0][0]), int(point[0][1])), 3, (0, 255, 0), -1)
 
-		cv2.imshow('LKtrack', self.img)
-		
+		cv2.imshow('color', self.img)
+		cv2.imshow('gray', self.gray)
 
 	def filter(self):
-		(gray, cg, cr) = cv2.split(self.img)
-		#gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-		self.gray = cv2.threshold(gray, 200, 255, cv2.THRESH_TOZERO)[1]
+		cv2.accumulateWeighted(self.img, self.avg, 0.4)
+		self.img = cv2.convertScaleAbs(self.avg)
+		(cb, gray, cr) = cv2.split(self.img)
+		self.gray = cv2.threshold(gray, 150, 255, cv2.THRESH_TOZERO)[1]
+		self.cb = cv2.threshold(cb, 150, 255, cv2.THRESH_TOZERO)[1]
+		self.cr = cv2.threshold(cr, 150, 255, cv2.THRESH_TOZERO)[1]
 
 					
