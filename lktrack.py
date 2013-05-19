@@ -3,7 +3,7 @@ import cv2
 import win32api, win32con, math, time
 
 MIN_POINTS = 1
-MAX_POINTS = 1
+MAX_POINTS = 3
 lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, .03))
 subpix_params = dict(zeroZone=(-1, -1), winSize=(10, 10), criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 20, .03))
 feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
@@ -22,8 +22,7 @@ class LKTracker(object):
 
 	def update(self, img, mouse=False):
 		self.img = img
-		if len(self.features) < MIN_POINTS or floor(time.time())%10000 == 0:
-			print "tracking"
+		if len(self.features) < MIN_POINTS or floor(time.time())%1000 == 0:
 			self.detect_points()
 		self.track_points(mouse)
 		self.draw()
@@ -37,10 +36,32 @@ class LKTracker(object):
 
 		# search for good points
 		features = cv2.goodFeaturesToTrack(self.gray, **feature_params)
-		
+
+		(cb, gray, cr) = cv2.split(self.img)
+		gray = cv2.threshold(gray, 150, 255, cv2.THRESH_TOZERO)[1]
+		circles = cv2.HoughCircles(gray,cv2.cv.CV_HOUGH_GRADIENT,3,100,param1=100,param2=30,minRadius=3,maxRadius=20)
+		self.circles = circles
+		confirmed_features = []
+        
 		if features != None:
-			# refine the corner locations
-			self.features = features
+			if circles != None:
+				for feature in features:
+					x1 = int(feature[0][0])
+					y1 = int(feature[0][1])
+
+					for circle in circles:
+						x2 = circle[0][0]
+						y2 = circle[0][1]
+
+						if sqrt( (x2 - x1)**2 + (y2 - y1)**2 ) < circle[0][2] * 1.1:
+							confirmed_features.append(feature)
+							break
+
+			else:
+				confirmed_features = features
+
+			# initialize the tracking
+			self.features = confirmed_features
 			self.tracks = [[p] for p in features.reshape((-1, 2))]
 			self.prev_gray = self.gray
 
@@ -77,6 +98,7 @@ class LKTracker(object):
 			self.features = [p for (st, p) in zip(status, features) if st]
 
 			# clean tracks from lost points
+
 			features = array(features).reshape((-1, 2))
 			for i, f in enumerate(features):
 				self.tracks[i].append(f)
@@ -94,14 +116,19 @@ class LKTracker(object):
 
 		# draw points as green circles for point in self.features:
 		for point in self.features:
-			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 3, (0, 255, 0), -1)
-			cv2.circle(self.gray, (int(point[0][0]), int(point[0][1])), 3, (0, 255, 0), -1)
+			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
+			cv2.circle(self.gray, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
+
+		if self.circles != None:
+			for circle in self.circles[0,:]:
+				cv2.circle(self.img,(int(circle[0]), int(circle[1])), int(circle[2] * 1.05), (255, 0, 0), 1)  # draw the outer circle
+				cv2.circle(self.img,(int(circle[0]), int(circle[1])), 2, (0, 0, 255), 3)     # draw the center of the circle
 
 		cv2.imshow('color', self.img)
 		cv2.imshow('gray', self.gray)
 
 	def filter(self):
-		cv2.accumulateWeighted(self.img, self.avg, 0.4)
+		cv2.accumulateWeighted(self.img, self.avg, 0.5)
 		self.img = cv2.convertScaleAbs(self.avg)
 		(cb, gray, cr) = cv2.split(self.img)
 		self.gray = cv2.threshold(gray, 150, 255, cv2.THRESH_TOZERO)[1]

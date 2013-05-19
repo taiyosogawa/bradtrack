@@ -36,6 +36,9 @@ while True:
 	elif key == 113: 	#q
 		maxX = max(maxX, lkt.get_points()[0])
 		minY = min(minY, lkt.get_points()[1])
+	elif key == 32: 	#space
+		lkt.detect_points()
+		print "space"
 	elif key == 27:
 		print minX
 		print maxX
