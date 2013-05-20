@@ -4,13 +4,11 @@ import win32api, win32con, math, time
 
 MIN_POINTS = 1
 MAX_POINTS = 3
+PIXEL_THRESHOLD = 130
 lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, .03))
-subpix_params = dict(zeroZone=(-1, -1), winSize=(10, 10), criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 20, .03))
 feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
 
 class LKTracker(object):
-	""" Class for Lucas-Kanade tracking with 
-		pyramidal optical flow."""
 
 	def __init__(self, img):
 		if MAX_POINTS < MIN_POINTS:
@@ -28,9 +26,6 @@ class LKTracker(object):
 		self.draw()
 
 	def detect_points(self):
-		""" Detect 'good features to track' (corners)
-			in the current current_frame using
-			sub-pixel accuracy. """
 		# load the image and create grayscale
 		self.filter()
 
@@ -73,16 +68,18 @@ class LKTracker(object):
 		self.minY = mY
 		self.scaleX = sX
 		self.scaleY = sY
+		self.x = 0
+		self.y = 0 
 
 	def track_points(self, mouse=False):
 		""" Track the detected features. """
 		if self.features != []:
 
 			if mouse:
-				x = int(win32api.GetSystemMetrics (0) - (self.features[0][0][0] - self.minX) * self.scaleX)
-				y = int((self.features[0][0][1] - self.minY) * self.scaleY)
+				self.x = int(.7*self.x + .3*(win32api.GetSystemMetrics (0) - (self.features[0][0][0] - self.minX) * self.scaleX))
+				self.y = int(.7*self.y + .3*((self.features[0][0][1] - self.minY) * self.scaleY))
 
-				win32api.SetCursorPos((x, y))
+				win32api.SetCursorPos((self.x, self.y))
 
 			#load the image and create grayscale
 			self.filter()
@@ -125,14 +122,38 @@ class LKTracker(object):
 				cv2.circle(self.img,(int(circle[0]), int(circle[1])), 2, (0, 0, 255), 3)     # draw the center of the circle
 
 		cv2.imshow('color', self.img)
-		cv2.imshow('gray', self.gray)
+		
 
 	def filter(self):
+		cv2.imshow('original', self.img)
+		#Remove jitter
+		"""
 		cv2.accumulateWeighted(self.img, self.avg, 0.5)
 		self.img = cv2.convertScaleAbs(self.avg)
-		(cb, gray, cr) = cv2.split(self.img)
-		self.gray = cv2.threshold(gray, 150, 255, cv2.THRESH_TOZERO)[1]
-		self.cb = cv2.threshold(cb, 150, 255, cv2.THRESH_TOZERO)[1]
-		self.cr = cv2.threshold(cr, 150, 255, cv2.THRESH_TOZERO)[1]
+		"""
 
-					
+		(cb, cg, cr) = cv2.split(self.img)
+		threshold = cv2.threshold(cg, PIXEL_THRESHOLD, 255, cv2.THRESH_TOZERO)[1]
+		color_threshold = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
+
+		
+		mask = zeros(threshold.shape, uint8)
+		contours, hier = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+		for cnt in contours:
+			if 15 < cv2.contourArea(cnt) < 800:
+				M = cv2.moments(cnt)
+				cx = int(M['m10']/M['m00'])
+				cy = int(M['m01']/M['m00'])
+				# cy comes before cx in this array
+				if threshold[cy][cx] >= PIXEL_THRESHOLD:
+					cv2.drawContours(color_threshold, [cnt], 0, (255, 0, 255), 1)
+					cv2.drawContours(mask, [cnt], 0, 255, -1)
+					cv2.drawContours(self.img, [cnt], 0, (255, 0, 255), 1)
+
+		mask = cv2.bitwise_and(color_threshold, color_threshold, mask=mask)
+
+		cv2.imshow('mask', mask)
+		cv2.imshow('cg', cg)
+		cv2.imshow('threshold', color_threshold)
+
+		self.gray = threshold
