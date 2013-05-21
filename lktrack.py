@@ -27,7 +27,7 @@ class LKTracker(object):
 
 	def detect_points(self):
 		# load the image and create grayscale
-		self.filter()
+		self.filter(track=False)
 
 		# search for good points
 		features = cv2.goodFeaturesToTrack(self.gray, **feature_params)
@@ -116,44 +116,56 @@ class LKTracker(object):
 			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
 			cv2.circle(self.gray, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
 
-		if self.circles != None:
-			for circle in self.circles[0,:]:
-				cv2.circle(self.img,(int(circle[0]), int(circle[1])), int(circle[2] * 1.05), (255, 0, 0), 1)  # draw the outer circle
-				cv2.circle(self.img,(int(circle[0]), int(circle[1])), 2, (0, 0, 255), 3)     # draw the center of the circle
-
-		cv2.imshow('color', self.img)
+		cv2.imshow('final', self.img)
 		
 
-	def filter(self):
+	def filter(self, track=True):
 		cv2.imshow('original', self.img)
 		#Remove jitter
-		"""
+
 		cv2.accumulateWeighted(self.img, self.avg, 0.5)
 		self.img = cv2.convertScaleAbs(self.avg)
-		"""
 
 		(cb, cg, cr) = cv2.split(self.img)
-		threshold = cv2.threshold(cg, PIXEL_THRESHOLD, 255, cv2.THRESH_TOZERO)[1]
-		color_threshold = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
+		gray_threshold = cv2.threshold(cg, PIXEL_THRESHOLD, 255, cv2.THRESH_TOZERO)[1]
+		color_threshold = cv2.cvtColor(gray_threshold, cv2.COLOR_GRAY2BGR)
 
-		
-		mask = zeros(threshold.shape, uint8)
-		contours, hier = cv2.findContours(threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+		""" create a contour mask """
+		contour_mask = zeros(gray_threshold.shape, uint8)
+		contours, hier = cv2.findContours(gray_threshold, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 		for cnt in contours:
 			if 15 < cv2.contourArea(cnt) < 800:
-				M = cv2.moments(cnt)
-				cx = int(M['m10']/M['m00'])
-				cy = int(M['m01']/M['m00'])
-				# cy comes before cx in this array
-				if threshold[cy][cx] >= PIXEL_THRESHOLD:
-					cv2.drawContours(color_threshold, [cnt], 0, (255, 0, 255), 1)
-					cv2.drawContours(mask, [cnt], 0, 255, -1)
-					cv2.drawContours(self.img, [cnt], 0, (255, 0, 255), 1)
+				cv2.drawContours(color_threshold, [cnt], 0, (255, 0, 255), 1)
+				cv2.drawContours(contour_mask, [cnt], 0, 255, -1)
+				cv2.drawContours(self.img, [cnt], 0, (255, 0, 255), 1)
 
-		mask = cv2.bitwise_and(color_threshold, color_threshold, mask=mask)
+		color_contour = cv2.bitwise_and(color_threshold, color_threshold, mask=contour_mask)
 
-		cv2.imshow('mask', mask)
+		""" create a circle mask """
+		circle_mask = zeros(gray_threshold.shape, uint8)
+		color_threshold = cv2.cvtColor(gray_threshold, cv2.COLOR_GRAY2BGR)
+		circles = cv2.HoughCircles(gray_threshold,cv2.cv.CV_HOUGH_GRADIENT,3,100,param1=100,param2=30,minRadius=3,maxRadius=20)
+		if circles != None:
+			for circle in circles[0,:]:
+				cv2.circle(color_threshold, (int(circle[0]), int(circle[1])), int(circle[2] * 1.05), (255, 0, 0), 1)
+				cv2.circle(circle_mask, (int(circle[0]), int(circle[1])), int(circle[2] * 1.05), 255, -1)
+				cv2.circle(self.img, (int(circle[0]), int(circle[1])), int(circle[2] * 1.05), (255, 0, 0), 1)
+
+		color_circle = cv2.bitwise_and(color_threshold, color_threshold, mask=circle_mask)
+
+		""" create a mask of both contours and circles """
+		double_mask = cv2.bitwise_and(contour_mask, circle_mask)
+		color_double = cv2.bitwise_and(color_threshold, color_threshold, mask=double_mask)
+		gray_double = cv2.bitwise_and(gray_threshold, gray_threshold, mask=double_mask)
+
 		cv2.imshow('cg', cg)
-		cv2.imshow('threshold', color_threshold)
+		cv2.imshow('threshold', gray_threshold)
+		cv2.imshow('contour mask', color_contour)
+		cv2.imshow('circle mask', color_circle)
+		cv2.imshow('double mask', color_double)
 
-		self.gray = threshold
+		if track:
+			self.gray = gray_threshold
+		else:
+			self.gray = gray_double
+		
