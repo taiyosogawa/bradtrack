@@ -27,17 +27,20 @@ class BradTrack:
         frame = Frame(master)
         frame.pack()
 
+        self.corner = 0
+        self.corner_array = ["arrow_nw.gif", "arrow_sw.gif", "arrow_se.gif", "arrow_ne.gif"]
+        arrow_img = ImageTk.PhotoImage(file=self.corner_array[self.corner])
+
+        self.arrow_label = Label(frame, image=arrow_img)
+        self.arrow_label.image = arrow_img
+        self.arrow_label.pack(side=LEFT)
+
         self.timer = StringVar()
         self.timer.set("5")
-        timer_label = Label(frame, textvariable=self.timer).pack(side=LEFT)
-
-        self.corner = 0
-        self.corner_array = ["Top Left", "Bottom Left", "Bottom Right", "Top Right"]
-        self.corner_label = StringVar()
-        self.corner_label.set("Look " + self.corner_array[0])
-        corner_label = Label(frame, textvariable=self.corner_label).pack(side=LEFT)
+        timer_label = Label(frame, textvariable=self.timer, font=("Helvetica", 64), padx=40).pack(side=LEFT)
 
     def runtimer(self):
+        self.master.attributes("-topmost", True)
         self.clock = self.clock + 10
         if self.clock % 200 == 0:
             if self.tick():
@@ -45,7 +48,12 @@ class BradTrack:
                 if self.corner > 3:
                     self.master.destroy()
                     return
-            self.corner_label.set("Look " + self.corner_array[self.corner])
+                else:
+                    arrow_img = ImageTk.PhotoImage(file=self.corner_array[self.corner])
+                    self.arrow_label.configure(image = arrow_img)
+                    self.arrow_label.image = arrow_img
+
+            
         else:
             ret, img = self.cap.read()
             self.lkt.update(img)
@@ -95,6 +103,8 @@ class BradTrack:
 root = Tk()
 
 bradtrack = BradTrack(root)
+
+root.geometry("450x300+" + str(max(100, GetSystemMetrics(0) - 1225)) + "+150")
 root.after(10, bradtrack.runtimer)
 root.mainloop()
 bradtrack.track()

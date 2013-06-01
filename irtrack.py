@@ -119,7 +119,8 @@ class IRTracker(object):
 			cv2.circle(self.img, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
 			cv2.circle(self.gray, (int(point[0][0]), int(point[0][1])), 4, (0, 255, 0), -1)
 
-		cv2.imshow('final', self.img)
+		cv2.imshow('Brad Track', self.img)
+		cv2.moveWindow('Brad Track', win32api.GetSystemMetrics(0) - 700, 50)
 		
 
 	def filter(self, track=True):
