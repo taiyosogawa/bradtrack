@@ -7,7 +7,7 @@ import win32api, win32con
 CONSTANTS FOR PyAudio
 -----------------------------------------------------------------"""
 
-INITIAL_TAP_THRESHOLD = 0.010
+INITIAL_TAP_THRESHOLD = 0.02
 FORMAT = pyaudio.paInt16 
 SHORT_NORMALIZE = (1.0/32768.0)
 CHANNELS = 2
@@ -15,11 +15,11 @@ RATE = 44100
 INPUT_BLOCK_TIME = 0.05
 INPUT_FRAMES_PER_BLOCK = int(RATE*INPUT_BLOCK_TIME)
 # if we get this many noisy blocks in a row, increase the threshold
-OVERSENSITIVE = 15.0/INPUT_BLOCK_TIME                    
+OVERSENSITIVE = 12.0/INPUT_BLOCK_TIME                    
 # if we get this many quiet blocks in a row, decrease the threshold
 UNDERSENSITIVE = 120.0/INPUT_BLOCK_TIME 
 # if the noise was longer than this many blocks, it's not a 'tap'
-MAX_TAP_BLOCKS = 0.15/INPUT_BLOCK_TIME
+MAX_TAP_BLOCKS = 0.2/INPUT_BLOCK_TIME
 
 def click(x,y):
     win32api.SetCursorPos((x,y))
@@ -48,7 +48,7 @@ def get_rms( block ):
 
     return math.sqrt( sum_squares / count )
 
-class TapTester(object):
+class Listener(object):
     def __init__(self):
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()
@@ -124,9 +124,3 @@ class TapTester(object):
             if self.quietcount > UNDERSENSITIVE:
                 # turn up the sensitivity
                 self.tap_threshold *= 0.9
-
-if __name__ == "__main__":
-    tt = TapTester()
-
-    while(True):
-        tt.listen()

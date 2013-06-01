@@ -8,7 +8,7 @@ PIXEL_THRESHOLD = 130
 lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, .03))
 feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
 
-class LKTracker(object):
+class IRTracker(object):
 
 	def __init__(self, img):
 		if MAX_POINTS < MIN_POINTS:
@@ -20,7 +20,7 @@ class LKTracker(object):
 
 	def update(self, img, mouse=False):
 		self.img = img
-		if len(self.features) < MIN_POINTS or floor(time.time())%1000 == 0:
+		if len(self.features) < MIN_POINTS or floor(time.time())% 60000== 0:
 			self.detect_points()
 		self.track_points(mouse)
 		self.draw()
@@ -61,7 +61,10 @@ class LKTracker(object):
 			self.prev_gray = self.gray
 
 	def get_points(self):
-		return self.features[0][0]
+		if len(self.features) > 0:
+			return self.features[0][0]
+		else:
+			return []
 
 	def set_mapping(self, mX=0, mY=0, sX=1, sY=1):
 		self.minX = mX
@@ -120,7 +123,7 @@ class LKTracker(object):
 		
 
 	def filter(self, track=True):
-		cv2.imshow('original', self.img)
+		#cv2.imshow('original', self.img)
 		#Remove jitter
 
 		cv2.accumulateWeighted(self.img, self.avg, 0.5)
@@ -128,6 +131,7 @@ class LKTracker(object):
 
 		(cb, cg, cr) = cv2.split(self.img)
 		gray_threshold = cv2.threshold(cg, PIXEL_THRESHOLD, 255, cv2.THRESH_TOZERO)[1]
+		#cv2.imshow('threshold', gray_threshold)
 		color_threshold = cv2.cvtColor(gray_threshold, cv2.COLOR_GRAY2BGR)
 
 		""" create a contour mask """
@@ -158,11 +162,13 @@ class LKTracker(object):
 		color_double = cv2.bitwise_and(color_threshold, color_threshold, mask=double_mask)
 		gray_double = cv2.bitwise_and(gray_threshold, gray_threshold, mask=double_mask)
 
+		"""
 		cv2.imshow('cg', cg)
-		cv2.imshow('threshold', gray_threshold)
+		
 		cv2.imshow('contour mask', color_contour)
 		cv2.imshow('circle mask', color_circle)
 		cv2.imshow('double mask', color_double)
+		"""
 
 		if track:
 			self.gray = gray_threshold
