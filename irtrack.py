@@ -16,10 +16,10 @@ class IRTracker(object):
 		self.features = []
 		self.tracks = []
 		self.current_frame = 0
-		self.avg = float32(img)
+		self.avg = float32(cv2.flip(img, 1))
 
 	def update(self, img, mouse=False):
-		self.img = img
+		self.img = cv2.flip(img, 1)
 		if len(self.features) < MIN_POINTS or floor(time.time())% 60000== 0:
 			self.detect_points()
 		self.track_points(mouse)
@@ -79,7 +79,7 @@ class IRTracker(object):
 		if self.features != []:
 
 			if mouse:
-				self.x = int(.7*self.x + .3*(win32api.GetSystemMetrics (0) - (self.features[0][0][0] - self.minX) * self.scaleX))
+				self.x = int(.7*self.x + .3*((self.features[0][0][0] - self.minX) * self.scaleX))
 				self.y = int(.7*self.y + .3*((self.features[0][0][1] - self.minY) * self.scaleY))
 
 				win32api.SetCursorPos((self.x, self.y))
