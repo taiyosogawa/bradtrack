@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import sys, time
+import sys, time, os
 import irtrack, clicklistener
 from PIL import ImageTk
 from win32api import GetSystemMetrics
@@ -8,12 +8,11 @@ from Tkinter import *
 
 class BradTrack:
     def __init__(self, master):
-        # Initialize listener for tongue clicks
-        self.listener = clicklistener.Listener()
-
+        os.chdir("c:\\platform-tools\\bradtrack")
         self.cap = cv2.VideoCapture(0)
         ret, img = self.cap.read()
         self.lkt = irtrack.IRTracker(img)
+        self.listener = clicklistener.Listener()
 
         # Set default values for the bounding box
         self.minX = 0
@@ -60,13 +59,13 @@ class BradTrack:
         self.master.after(10, self.runtimer)
 
     def tick(self):
-        print "tick"
+        #print "tick"
         time_left = int(self.timer.get())
         if time_left > 0:
             self.timer.set(str(time_left - 1))
             return False
         else:
-            print "timeout"
+            #print "timeout"
             ret, img = self.cap.read()
             self.lkt.update(img)
             points = self.lkt.get_points()

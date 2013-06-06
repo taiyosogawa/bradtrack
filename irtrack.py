@@ -3,7 +3,7 @@ import cv2
 import win32api, win32con, math, time
 
 MIN_POINTS = 1
-MAX_POINTS = 3
+MAX_POINTS = 1
 PIXEL_THRESHOLD = 130
 lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, .03))
 feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
@@ -11,8 +11,8 @@ feature_params = dict(maxCorners=MAX_POINTS, qualityLevel=.5, minDistance=10)
 class IRTracker(object):
 
 	def __init__(self, img):
-		if MAX_POINTS < MIN_POINTS:
-			print "The maximum number of points is less than the minimum number of points specified"
+		#if MAX_POINTS < MIN_POINTS:
+			#print "The maximum number of points is less than the minimum number of points specified"
 		self.features = []
 		self.tracks = []
 		self.current_frame = 0
@@ -86,7 +86,7 @@ class IRTracker(object):
 
 			#load the image and create grayscale
 			self.filter()
-			
+
 			# reshape to fit input format
 			tmp = float32(self.features).reshape(-1, 1, 2)
 
@@ -121,7 +121,7 @@ class IRTracker(object):
 
 		cv2.imshow('Brad Track', self.img)
 		cv2.moveWindow('Brad Track', win32api.GetSystemMetrics(0) - 700, 50)
-		
+
 
 	def filter(self, track=True):
 		#cv2.imshow('original', self.img)
@@ -175,4 +175,3 @@ class IRTracker(object):
 			self.gray = gray_threshold
 		else:
 			self.gray = gray_double
-		
